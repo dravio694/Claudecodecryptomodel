@@ -4,185 +4,725 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>LASTCLICK — Claudecodetrading</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@solana/spl-token@0.3.9/lib/index.iife.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg:       #050a12;
+      --surface:  #0b1524;
+      --border:   rgba(0,210,180,0.18);
+      --accent:   #00d2b4;
+      --accent2:  #00a896;
+      --danger:   #ff3c3c;
+      --warn:     #ffb800;
+      --text:     #e8f0f8;
+      --muted:    rgba(232,240,248,0.38);
+      --mono:     'Share Tech Mono', monospace;
+      --sans:     'Rajdhani', sans-serif;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
     body {
       min-height: 100vh;
-      background: radial-gradient(circle at 20% 30%, #0a0c18, #03050b);
-      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      font-family: var(--sans);
+      color: var(--text);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
+      overflow-x: hidden;
+      position: relative;
     }
+
+    /* ── Scanlines overlay ── */
+    body::before {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
+      );
+    }
+
+    /* ── Grid ── */
+    body::after {
+      content: "";
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,210,180,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,210,180,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+
+    /* ── Glow orbs ── */
+    .orb {
+      position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+      filter: blur(80px);
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,210,180,0.07) 0%, transparent 70%);
+      top: -200px; left: -150px;
+      animation: drift 14s ease-in-out infinite alternate;
+    }
+    .orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,100,255,0.06) 0%, transparent 70%);
+      bottom: -180px; right: -120px;
+      animation: drift 18s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes drift {
+      from { transform: translate(0, 0); }
+      to   { transform: translate(30px, 20px); }
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 520px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    /* ── Card ── */
     .card {
-      max-width: 550px;
-      width: 100%;
-      background: rgba(6, 12, 24, 0.85);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(0, 255, 200, 0.3);
-      border-radius: 2rem;
-      padding: 1.8rem;
-      box-shadow: 0 25px 45px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,255,200,0.1) inset;
+      background: rgba(11,21,36,0.82);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow:
+        0 0 0 1px rgba(0,210,180,0.06) inset,
+        0 20px 60px rgba(0,0,0,0.5),
+        0 0 40px rgba(0,210,180,0.04);
     }
-    .price { font-size: 3.8rem; font-weight: bold; text-align: center; color: #0ff; text-shadow: 0 0 15px #0ff; letter-spacing: 4px; }
-    .timer { font-size: 2.8rem; text-align: center; background: #00000066; padding: 0.5rem; border-radius: 2rem; margin: 1rem 0; letter-spacing: 8px; font-family: monospace; }
-    .timer.urgent { color: #ff4444; text-shadow: 0 0 10px #ff4444; animation: pulse 1s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .header-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: var(--accent);
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+    .header-title {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .header-title span { color: var(--accent); }
+    .header-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      margin-top: 6px;
+    }
+
+    /* ── Reward tag ── */
+    .reward-tag {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 2px;
+      padding: 5px 16px;
+      border-radius: 30px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.2;
+      margin: 20px 0;
+    }
+
+    /* ── Price block ── */
+    .price-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .price-value {
+      font-family: var(--mono);
+      font-size: 62px;
+      font-weight: normal;
+      text-align: center;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(0,210,180,0.45), 0 0 60px rgba(0,210,180,0.15);
+      transition: color 0.25s, text-shadow 0.25s;
+      letter-spacing: 2px;
+    }
+    .price-value .unit {
+      font-size: 22px;
+      opacity: 0.55;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .price-value.flash {
+      color: #fff;
+      text-shadow: 0 0 30px #fff, 0 0 60px var(--accent);
+    }
+    .price-hint {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 6px;
+      letter-spacing: 1px;
+    }
+
+    /* ── Timer ── */
+    .timer-wrap {
+      margin: 20px 0;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(0,210,180,0.12);
+      border-radius: 14px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+    .timer-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .timer-value {
+      font-family: var(--mono);
+      font-size: 50px;
+      letter-spacing: 10px;
+      color: #fff;
+      font-weight: normal;
+      text-shadow: 0 0 12px rgba(255,255,255,0.15);
+      transition: color 0.4s, text-shadow 0.4s;
+    }
+    .timer-value.urgent {
+      color: var(--danger);
+      text-shadow: 0 0 16px rgba(255,60,60,0.5);
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.7; }
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(0,210,180,0.1);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 18px;
+      color: var(--accent);
+    }
+    .stat-value.sm { font-size: 13px; color: var(--text); letter-spacing: 0; }
+
+    /* ── Buttons ── */
     .btn {
-      width: 100%; padding: 14px; border: none; border-radius: 2rem; font-size: 1.1rem;
-      font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-family: var(--sans);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+      overflow: hidden;
     }
-    .btn-primary { background: linear-gradient(95deg, #00ccaa, #008877); color: #000; }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-ghost { background: transparent; border: 1px solid #0ff; color: #0ff; margin-bottom: 1rem; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 1rem 0; }
-    .stat { background: #00000055; border-radius: 1rem; padding: 0.5rem; text-align: center; }
-    .history { margin-top: 1.5rem; background: #00000044; border-radius: 1rem; padding: 1rem; }
-    .history span { background: #0ff2; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; margin: 4px; display: inline-block; }
+    .btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.06);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .btn:hover::after { opacity: 1; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn:disabled::after { display: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      color: #000;
+      box-shadow: 0 0 30px rgba(0,210,180,0.25), 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .btn-primary:not(:disabled):hover {
+      box-shadow: 0 0 50px rgba(0,210,180,0.4), 0 6px 24px rgba(0,0,0,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--accent);
+    }
+    .btn-ghost:not(:disabled):hover {
+      background: rgba(0,210,180,0.07);
+      border-color: var(--accent);
+    }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(255,60,60,0.3);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: rgba(255,60,60,0.08); }
+
+    /* ── Confirm box ── */
+    .confirm-box {
+      background: rgba(255,184,0,0.05);
+      border: 1px solid rgba(255,184,0,0.25);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+    .confirm-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 2px;
+      color: var(--warn);
+      margin-bottom: 8px;
+    }
+    .confirm-detail {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 16px;
+    }
+    .confirm-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ── History ── */
+    .history-card { padding: 20px 22px; }
+    .section-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .history-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .history-chip {
+      background: rgba(0,210,180,0.08);
+      border: 1px solid rgba(0,210,180,0.18);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      animation: chipIn 0.3s ease;
+    }
+    @keyframes chipIn {
+      from { opacity:0; transform:scale(0.85); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    .history-empty {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background: rgba(4,8,16,0.7);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 1px;
+      transition: color 0.3s, border-color 0.3s;
+    }
+    .status-bar.ok     { color: var(--accent);   border-color: rgba(0,210,180,0.2); }
+    .status-bar.err    { color: var(--danger);    border-color: rgba(255,60,60,0.2); }
+    .status-bar.warn   { color: var(--warn);      border-color: rgba(255,184,0,0.2); }
+    .status-bar.loading { color: rgba(232,240,248,0.6); }
+
+    /* ── Online pill ── */
+    .online-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .online-dot {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--accent);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity:1; transform:scale(1); }
+      50%       { opacity:0.6; transform:scale(0.8); }
+    }
+
+    /* ── Toast ── */
     .toast {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: #0ff; color: #000; padding: 10px 20px; border-radius: 40px;
-      font-weight: bold; animation: fadeOut 3s forwards;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 1px;
+      padding: 12px 24px;
+      border-radius: 40px;
+      z-index: 1000;
+      white-space: nowrap;
+      box-shadow: 0 4px 20px rgba(0,210,180,0.4);
+      animation: toastIn 0.3s ease, toastOut 0.5s ease 2.5s forwards;
     }
-    @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
-    .status { margin-top: 1rem; background: #0a0f1e; padding: 0.6rem; border-radius: 2rem; text-align: center; font-size: 0.7rem; }
+    @keyframes toastIn  { from { opacity:0; transform:translateX(-50%) translateY(12px); } }
+    @keyframes toastOut { to   { opacity:0; transform:translateX(-50%) translateY(8px);  } }
+
+    /* ── Ended overlay ── */
+    .ended-banner {
+      text-align: center;
+      padding: 24px;
+    }
+    .ended-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--warn);
+      text-shadow: 0 0 20px rgba(255,184,0,0.4);
+      margin-bottom: 12px;
+    }
+    .ended-detail {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 2;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: rgba(232,240,248,0.12);
+      letter-spacing: 3px;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <div style="text-align:center; margin-bottom:1rem;"><span style="letter-spacing:6px;">◈ SOLANA USDC ◈</span></div>
-  <button id="connectBtn" class="btn btn-ghost">🔌 CONNECTER WALLET</button>
-  <div class="price" id="price">--.-- USDC</div>
-  <div class="timer" id="timer">--:--:--</div>
-  <div class="grid">
-    <div class="stat"><div>ACHETEURS</div><div id="buyerCount" style="font-size:1.6rem; color:#0ff;">0</div></div>
-    <div class="stat"><div>LEADER</div><div id="lastBuyer">—</div></div>
-    <div class="stat"><div>EN LIGNE</div><div id="onlineCount">1</div></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="wrapper">
+
+    <!-- ── Main card ── -->
+    <div class="card">
+      <div class="header">
+        <div class="reward-tag" id="rewardTag">Claudecodetrading</div>
+        <div class="header-badge">◈ SOLANA · USDC · SPL TOKEN ◈</div>
+        <div class="header-title">LAST<span>CLICK</span></div>
+        <div class="header-sub">ENCHÈRE DU DERNIER CLIC</div>
+      </div>
+
+      <!-- Wallet connect -->
+      <button id="connectBtn" class="btn btn-ghost">⬡ CONNECTER WALLET</button>
+
+      <div class="divider"></div>
+
+      <!-- Price -->
+      <div class="price-label">PRIX ACTUEL</div>
+      <div class="price-value" id="priceValue">
+        <span id="priceNum">--.-–</span><span class="unit">USDC</span>
+      </div>
+      <div class="price-hint">+20% à chaque achat · −0.10 toutes les 10 min</div>
+
+      <!-- Timer -->
+      <div class="timer-wrap">
+        <div class="timer-label">⏱ TEMPS RESTANT</div>
+        <div class="timer-value" id="timerValue">--:--:--</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">ACHETEURS</div>
+          <div class="stat-value" id="buyerCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">LEADER</div>
+          <div class="stat-value sm" id="lastBuyer">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">EN LIGNE</div>
+          <div class="stat-value" id="onlineCount">1</div>
+        </div>
+      </div>
+
+      <!-- Buy button / confirm -->
+      <div id="buyArea">
+        <button id="buyBtn" class="btn btn-primary" disabled>⚡ ACHETER MAINTENANT</button>
+      </div>
+
+      <!-- Ended banner (hidden initially) -->
+      <div id="endedBanner" class="ended-banner" style="display:none">
+        <div class="ended-title">🏆 ENCHÈRE TERMINÉE</div>
+        <div class="ended-detail" id="endedDetail">—</div>
+      </div>
+    </div>
+
+    <!-- ── History card ── -->
+    <div class="card history-card">
+      <div class="section-label">◈ DERNIERS ACHETEURS</div>
+      <div class="history-list" id="historyList">
+        <span class="history-empty">Aucun achat pour l&apos;instant</span>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar loading" id="statusBar">🔄 Connexion au réseau...</div>
+
+    <!-- Online indicator -->
+    <div class="online-pill">
+      <div class="online-dot"></div>
+      <span id="onlinePill">1 utilisateur connecté</span>
+    </div>
+
+    <div class="footer">LASTCLICK v2.0 · SOLANA MAINNET</div>
   </div>
-  <button id="buyBtn" class="btn btn-primary" disabled>⚡ ACHETER</button>
-  <div class="history"><div>📜 DERNIERS ACHETEURS</div><div id="historyList">—</div></div>
-  <div class="status" id="statusMsg">🔄 Connexion au serveur...</div>
-</div>
 
 <script>
-  const socket = io();
-  let state = { price: 0, endTime: 0, buyerCount: 0, lastBuyer: '—', history: [], isActive: true };
-  let walletConnected = false, publicKey = null, buyLoading = false, currentQuoteId = null;
+"use strict";
 
-  // DOM
-  const priceEl = document.getElementById('price');
-  const timerEl = document.getElementById('timer');
-  const buyerCountEl = document.getElementById('buyerCount');
-  const lastBuyerEl = document.getElementById('lastBuyer');
-  const onlineCountEl = document.getElementById('onlineCount');
-  const historyListEl = document.getElementById('historyList');
-  const buyBtn = document.getElementById('buyBtn');
-  const connectBtn = document.getElementById('connectBtn');
-  const statusMsg = document.getElementById('statusMsg');
+// ── State ──────────────────────────────────────────────────────
+let S = {
+  price:          0,
+  endTime:        0,
+  buyerCount:     0,
+  lastBuyer:      null,
+  history:        [],
+  isActive:       true,
+  walletConnected: false,
+  publicKey:      null,
+  buyLoading:     false,
+  confirmShown:   false,
+  platformWallet: null,
+  usdcMint:       null,
+  decimals:       6,
+};
 
-  function setStatus(msg, isOk = true) { statusMsg.innerHTML = msg; statusMsg.style.color = isOk ? '#0ff' : '#ff6666'; }
-  function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.innerText = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
+// ── DOM refs ───────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const priceNum    = $('priceNum');
+const timerValue  = $('timerValue');
+const buyerCount  = $('buyerCount');
+const lastBuyer   = $('lastBuyer');
+const onlineCount = $('onlineCount');
+const onlinePill  = $('onlinePill');
+const historyList = $('historyList');
+const buyArea     = $('buyArea');
+const buyBtn      = $('buyBtn');
+const connectBtn  = $('connectBtn');
+const statusBar   = $('statusBar');
+const endedBanner = $('endedBanner');
+const endedDetail = $('endedDetail');
+const rewardTag   = $('rewardTag');
 
-  let timerInterval = null;
-  function startTimer(endTime) {
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      const diff = endTime - Date.now();
-      if (diff <= 0) { timerEl.innerText = '00:00:00'; return; }
-      const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
-      timerEl.innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-      if (h === 0 && m < 15) timerEl.classList.add('urgent'); else timerEl.classList.remove('urgent');
-    }, 1000);
-  }
+// ── Helpers ────────────────────────────────────────────────────
+function setStatus(msg, type = 'ok') {
+  statusBar.textContent = msg;
+  statusBar.className = 'status-bar ' + type;
+}
 
-  function updateUI(data) {
-    if (data.price) { state.price = data.price; priceEl.innerText = state.price.toFixed(2) + ' USDC'; }
-    if (data.endTime) startTimer(data.endTime);
-    if (data.buyerCount !== undefined) { state.buyerCount = data.buyerCount; buyerCountEl.innerText = state.buyerCount; }
-    if (data.lastBuyer) { state.lastBuyer = data.lastBuyer; lastBuyerEl.innerText = state.lastBuyer; }
-    if (data.history) { state.history = data.history; historyListEl.innerHTML = state.history.map(h => `<span>${h}</span>`).join('') || '—'; }
-    if (data.isActive !== undefined) { state.isActive = data.isActive; buyBtn.disabled = !(walletConnected && state.isActive && !buyLoading); }
-  }
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3100);
+}
 
-  socket.on('init', updateUI);
-  socket.on('priceUpdate', updateUI);
-  socket.on('auctionEnded', (data) => { setStatus(`🏆 ENCHÈRE TERMINÉE — Gagnant : ${data.winner} — ${data.finalPrice} USDC`); buyBtn.disabled = true; });
-  socket.on('newPurchase', (data) => toast(`🔥 ${data.buyer} a acheté à ${data.price} USDC !`));
-  socket.on('statsUpdate', (data) => { onlineCountEl.innerText = data.online; });
+function flash() {
+  priceNum.closest('.price-value').classList.add('flash');
+  setTimeout(() => priceNum.closest('.price-value').classList.remove('flash'), 600);
+}
 
-  connectBtn.onclick = async () => {
-    if (!window.solana?.isPhantom) return toast("Installez Phantom Wallet");
-    try {
-      const resp = await window.solana.connect();
-      publicKey = resp.publicKey.toString();
-      walletConnected = true;
-      setStatus(`✅ Connecté : ${publicKey.slice(0,4)}...${publicKey.slice(-4)}`);
-      connectBtn.disabled = true;
-      connectBtn.innerText = '✅ CONNECTÉ';
-      if (state.isActive) buyBtn.disabled = false;
-    } catch(e) { toast("Connexion refusée"); }
-  };
-
-  async function executeBuy() {
-    buyLoading = true; buyBtn.disabled = true;
-    setStatus("⏳ Préparation quote...");
-    try {
-      const quoteRes = await fetch('/api/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyerAddress: publicKey })
-      });
-      const quote = await quoteRes.json();
-      if (!quote.success) throw new Error(quote.error);
-      currentQuoteId = quote.quoteId;
-      const amount = quote.amountUSDC;
-      setStatus(`💰 Envoi de ${amount} USDC...`);
-
-      const connection = new solanaWeb3.Connection('https://api.mainnet-beta.solana.com');
-      const fromPubkey = new solanaWeb3.PublicKey(publicKey);
-      const toPubkey = new solanaWeb3.PublicKey(quote.platformWallet);
-      const mintPubkey = new solanaWeb3.PublicKey(quote.usdcMint);
-      const fromTokenAccount = await splToken.getAssociatedTokenAddress(mintPubkey, fromPubkey);
-      const toTokenAccount = await splToken.getAssociatedTokenAddress(mintPubkey, toPubkey);
-      const amountRaw = Math.round(amount * Math.pow(10, quote.decimals));
-      const tx = new solanaWeb3.Transaction().add(
-        splToken.createTransferInstruction(fromTokenAccount, toTokenAccount, fromPubkey, amountRaw, [], splToken.TOKEN_PROGRAM_ID)
-      );
-      tx.feePayer = fromPubkey;
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      const signed = await window.solana.signTransaction(tx);
-      const signature = await connection.sendRawTransaction(signed.serialize());
-      await connection.confirmTransaction(signature);
-
-      setStatus("⏳ Vérification paiement...");
-      const verifyRes = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyerAddress: publicKey, signature, quoteId: currentQuoteId })
-      });
-      const result = await verifyRes.json();
-      if (result.success) {
-        setStatus(`✅ Achat validé ! Nouveau prix : ${result.newPrice} USDC`);
-        toast(`💸 Achat confirmé à ${amount} USDC !`);
-      } else throw new Error(result.error);
-    } catch (err) {
-      setStatus(`❌ Erreur : ${err.message}`, false);
-      toast("Transaction échouée");
+let timerInterval = null;
+function startTimer(endTime) {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const diff = endTime - Date.now();
+    if (diff <= 0) {
+      clearInterval(timerInterval);
+      timerValue.textContent = '00:00:00';
+      return;
     }
-    buyLoading = false;
-    if (state.isActive && walletConnected) buyBtn.disabled = false;
-  }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const sc = Math.floor((diff % 60000) / 1000);
+    timerValue.textContent =
+      `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+    if (h === 0 && m < 15) timerValue.classList.add('urgent');
+    else                   timerValue.classList.remove('urgent');
+  }, 1000);
+}
 
-  buyBtn.onclick = () => {
-    if (!walletConnected || !state.isActive || buyLoading) return;
-    if (confirm(`Acheter à ${state.price.toFixed(2)} USDC ? Le prix va augmenter de 20%, timer redémarre à 24h.`))
-      executeBuy();
-  };
-</script>
-</body>
-</html>
+function renderHistory(history) {
+  if (!history || history.length === 0) {
+    historyList.innerHTML = '<span class="history-empty">Aucun achat pour l\'instant</span>';
+    return;
+  }
+  historyList.innerHTML = history
+    .map(h => `<span class="history-chip">${h}</span>`)
+    .join('');
+}
+
+function updateUI(data) {
+  if (data.price !== undefined) {
+    const changed = data.price !== S.price;
+    S.price = data.price;
+    priceNum.textContent = S.price.toFixed(2);
+    if (changed) flash();
+  }
+  if (data.endTime)    startTimer(data.endTime);
+  if (data.buyerCount !== undefined) buyerCount.textContent = data.buyerCount;
+  if (data.lastBuyer !== undefined)  lastBuyer.textContent = data.lastBuyer || '—';
+  if (data.history)    renderHistory(data.history);
+  if (data.isActive !== undefined)   S.isActive = data.isActive;
+
+  updateBuyBtn();
+}
+
+function updateBuyBtn() {
+  if (!S.isActive) {
+    buyBtn.disabled = true;
+    buyBtn.textContent = '⛔ ENCHÈRE TERMINÉE';
+    return;
+  }
+  if (!S.walletConnected) {
+    buyBtn.disabled = true;
+    buyBtn.textContent = '◈ WALLET REQUIS';
+    return;
+  }
+  if (S.buyLoading) {
+    buyBtn.disabled = true;
+    buyBtn.textContent = '⏳ TRAITEMENT...';
+    return;
+  }
+  buyBtn.disabled = false;
+  buyBtn.textContent = `⚡ ACHETER — ${S.price.toFixed(2)} USDC`;
+}
+
+function showConfirm() {
+  S.confirmShown = true;
+  const newPrice = (S.price * 1.20).toFixed(2);
+  buyArea.innerHTML = `
+    <div class="confirm-box">
+      <div class="confirm-title">⚠ CONFIRMER L'ACHAT ?</div>
+      <div class="confirm-detail">
+        Montant : <strong>${S.price.toFixed(2)} USDC</strong><br>
+        Nouveau prix si confirmé : <strong>${newPrice} USDC</strong><br>
+        Timer redémarre à 24h
+      </div>
+      <div class="confirm-btns">
+        <button class="btn btn-danger" id="cancelBtn" style="flex:1">ANNULER</button>
+        <button class="btn btn-primary" id="confirmBtn" style="flex:2">✓ CONFIRMER</button>
+      </div>
+    </div>
+  `;
+  $('cancelBtn').onclick  = cancelBuy;
+  $('confirmBtn').onclick = executeBuy;
+}
+
+function resetBuyArea() {
+  S.confirmShown = false;
+  buyArea.innerHTML = '<button id="buyBtn" class="btn btn-primary" disabled>⚡ ACHETER MAINTENANT</button>';
+  // Re-bind
+  document.getElementById('buyBtn').onclick = onBuyClick;
+  updateBuyBtn();
+}
+
+// ── Socket.IO ──────────────────────────
+  const socket = io();
+
+socket.on("init", (data) => {
+  updateUI(data);
+  setStatus("✅ Connecté", "ok");
+});
+
+socket.on("priceUpdate", (data) => {
+  updateUI(data);
+});
+
+socket.on("statsUpdate", (data) => {
+  onlineCount.textContent = data.online;
+  onlinePill.textContent = `${data.online} utilisateur(s) connecté(s)`;
+});
+
+socket.on("auctionEnded", (data) => {
+  S.isActive = false;
+  endedBanner.style.display = "block";
+  endedDetail.textContent = `Gagnant : ${data.winner} · Prix final : ${data.finalPrice} USDC`;
+  updateBuyBtn();
+});
