@@ -1,0 +1,20 @@
+{
+  "name": "lastclick-auction",
+  "version": "2.0.0",
+  "description": "Last-click reverse auction on Solana USDC",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "@solana/web3.js": "^1.87.6",
+    "@solana/spl-token": "^0.3.9",
+    "request-ip": "^3.3.0",
+    "express-rate-limit": "^7.1.5"
+  }
+}
